@@ -132,25 +132,27 @@ const sensors = useSensors(
       )}
 
       {/* BOARD CONTENT */}
-     <div
-        className={`flex-grow transition-all duration-300 overflow-x-auto md:overflow-visible p-2 md:p-4 ${
-          selectedCardId ? "blur-sm scale-[0.98]" : "blur-0 scale-100"
-        }`}
-      >
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <div className="flex md:grid md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 min-h-[80vh] max-w-[1600px] mx-auto">
-            {boardState.columns.map((column) => (
-              <KanbanColumn
-                key={column.id}
-                column={column}
-                cardIds={column.cardIds}
-                cards={boardState.cards}
-                onCardClick={handleCardClick}
-              />
-            ))}
-          </div>
-        </DndContext>
-      </div>
+     
+<div
+  className={`flex-grow transition-all duration-300 p-2 md:p-4 overflow-x-auto md:overflow-visible
+              ${selectedCardId ? "blur-sm scale-[0.98]" : "blur-0 scale-100"}`}
+>
+  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <div className="flex md:justify-center gap-4 min-h-[80vh]">
+      {boardState.columns.map((col) => (
+        <KanbanColumn
+          key={col.id}
+          column={col}
+          cardIds={col.cardIds}
+          cards={boardState.cards}
+          onCardClick={handleCardClick}
+        />
+      ))}
+    </div>
+  </DndContext>
+</div>
+
+
     </div>
   );
 };

@@ -24,8 +24,9 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
   });
 
   return (
-    <div className="flex flex-col bg-gray-100 rounded-lg w-72 flex-shrink-0 shadow-md">
-      <div
+
+<div className="flex flex-col bg-gray-100 rounded-lg flex-shrink-0 shadow-md
+                w-64 sm:w-72 md:w-80 lg:w-96">    <div
         className={`p-3 rounded-t-lg font-bold text-sm ${
           isWipExceeded ? "bg-red-200 text-red-800" : "bg-white border-b border-gray-200"
         }`}
