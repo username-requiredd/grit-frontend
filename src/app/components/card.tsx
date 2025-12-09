@@ -1,7 +1,7 @@
 import { Card } from "@/types/board";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 interface KanbanCardProps {
   card: Card;
@@ -12,12 +12,36 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ card, onClick }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id });
 
-  const [isDraggingLocal, setIsDraggingLocal] = useState(false);
+  const [hasMoved, setHasMoved] = useState(false);
+  const startPos = useRef<{ x: number; y: number } | null>(null);
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 10 : 0,
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    setHasMoved(false);
+    startPos.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (startPos.current) {
+      const dx = Math.abs(e.clientX - startPos.current.x);
+      const dy = Math.abs(e.clientY - startPos.current.y);
+      if (dx > 5 || dy > 5) {
+        setHasMoved(true);
+      }
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (!hasMoved && !isDragging) {
+      onClick?.(card.id);
+    }
+    setHasMoved(false);
+    startPos.current = null;
   };
 
   return (
@@ -29,14 +53,9 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ card, onClick }) => {
       className={`p-3 mb-3 bg-white border border-gray-200 rounded-lg shadow-sm ${
         isDragging ? "shadow-lg bg-indigo-50 border-indigo-500" : "hover:shadow-md"
       } transition duration-150 cursor-grab active:cursor-grabbing`}
-      onMouseDown={() => setIsDraggingLocal(false)}
-      onMouseMove={() => setIsDraggingLocal(true)}
-      onMouseUp={() => {
-        if (!isDraggingLocal) {
-          onClick?.(card.id);
-        }
-        setIsDraggingLocal(false);
-      }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
     >
       {/* Optional visual drag indicator */}
       <div className="w-full flex justify-center mb-2">
