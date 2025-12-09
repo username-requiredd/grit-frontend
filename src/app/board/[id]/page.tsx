@@ -26,14 +26,12 @@ const BoardViewPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
-  // --- Mobile gestures ---
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 180, tolerance: 5 },
-    })
-  );
+  // --- Desktop & Mobile sensors ---
+const sensors = useSensors(
+  useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), // desktop
+  useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }), // mobile
+  useSensor(KeyboardSensor) // optional
+);
 
   const selectedColumn =
     selectedCardId &&
@@ -134,13 +132,13 @@ const BoardViewPage: React.FC = () => {
       )}
 
       {/* BOARD CONTENT */}
-      <div
+     <div
         className={`flex-grow transition-all duration-300 overflow-x-auto md:overflow-visible p-2 md:p-4 ${
           selectedCardId ? "blur-sm scale-[0.98]" : "blur-0 scale-100"
         }`}
       >
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <div className="flex md:grid md:grid-cols-3 lg:grid-cols-4 gap-4 min-h-[80vh]">
+          <div className="flex md:grid md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 min-h-[80vh] max-w-[1600px] mx-auto">
             {boardState.columns.map((column) => (
               <KanbanColumn
                 key={column.id}

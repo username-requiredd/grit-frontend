@@ -1,7 +1,6 @@
 import { Card } from "@/types/board";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useState, useRef } from "react";
 
 interface KanbanCardProps {
   card: Card;
@@ -12,59 +11,46 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ card, onClick }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id });
 
-  const [hasMoved, setHasMoved] = useState(false);
-  const startPos = useRef<{ x: number; y: number } | null>(null);
-
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 10 : 0,
+    touchAction: "none", // This is crucial for mobile
   };
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    setHasMoved(false);
-    startPos.current = { x: e.clientX, y: e.clientY };
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (startPos.current) {
-      const dx = Math.abs(e.clientX - startPos.current.x);
-      const dy = Math.abs(e.clientY - startPos.current.y);
-      if (dx > 5 || dy > 5) {
-        setHasMoved(true);
-      }
-    }
-  };
-
-  const handlePointerUp = () => {
-    if (!hasMoved && !isDragging) {
+  // Use pointer up to avoid mobile click conflicts
+  const handleClick = (e: React.PointerEvent) => {
+    if (!isDragging) {
       onClick?.(card.id);
     }
-    setHasMoved(false);
-    startPos.current = null;
   };
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={`p-3 mb-3 bg-white border border-gray-200 rounded-lg shadow-sm ${
-        isDragging ? "shadow-lg bg-indigo-50 border-indigo-500" : "hover:shadow-md"
-      } transition duration-150 cursor-grab active:cursor-grabbing`}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-    >
-      {/* Optional visual drag indicator */}
-      <div className="w-full flex justify-center mb-2">
+  ref={setNodeRef}
+  style={{
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 0,
+    touchAction: "none", // Crucial for mobile
+  }}
+  {...attributes}
+  {...listeners} // must be attached to the element itself or a handle
+  onPointerUp={(e) => !isDragging && onClick?.(card.id)}
+  className={`p-3 mb-3 bg-white  rounded shadow-sm ${
+    isDragging ? "bg-indigo-50 border-indigo-500 shadow-lg" : "hover:shadow-md"
+  } cursor-grab active:cursor-grabbing`}
+>
+
+      {/* Drag handle */}
+      <div
+        {...listeners} // only attach listeners to the small drag handle
+        className="w-full flex justify-center mb-2 cursor-grab"
+      >
         <div className="w-10 h-1 bg-gray-300 rounded"></div>
       </div>
 
-      <h4 className="text-sm font-semibold text-gray-900 line-clamp-2">
-        {card.title}
-      </h4>
+      <h4 className="text-sm font-semibold text-gray-900 line-clamp-2">{card.title}</h4>
 
       <div className="flex justify-between items-center text-xs mt-2">
         {card.dueDate && <span className="text-red-500">Due: {card.dueDate}</span>}
