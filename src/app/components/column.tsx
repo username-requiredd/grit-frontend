@@ -1,16 +1,27 @@
 import { Column, Card } from "@/types/board";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-// import { KanbanCard } from "./KanbanCard";
+import { useDroppable } from "@dnd-kit/core";
 import { KanbanCard } from "./card";
 
 interface KanbanColumnProps {
   column: Column;
   cardIds: string[];
   cards: Record<string, Card>;
+  onCardClick?: (id: string) => void;
 }
 
-export const KanbanColumn: React.FC<KanbanColumnProps> = ({ column, cardIds, cards }) => {
+export const KanbanColumn: React.FC<KanbanColumnProps> = ({ 
+  column, 
+  cardIds, 
+  cards,
+  onCardClick
+}) => {
   const isWipExceeded = column.wipLimit !== null && cardIds.length > column.wipLimit;
+  
+  // ✅ Make the column a droppable target
+  const { setNodeRef } = useDroppable({
+    id: column.id,
+  });
 
   return (
     <div className="flex flex-col bg-gray-100 rounded-lg w-72 flex-shrink-0 shadow-md">
@@ -23,9 +34,14 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ column, cardIds, car
       </div>
 
       <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-        <div className="p-3 min-h-[500px] bg-gray-100">
+        {/* ✅ Attach the droppable ref here */}
+        <div ref={setNodeRef} className="p-3 min-h-[500px] bg-gray-100">
           {cardIds.map((cardId) => (
-            <KanbanCard key={cardId} card={cards[cardId]} />
+            <KanbanCard 
+              key={cardId} 
+              card={cards[cardId]} 
+              onClick={onCardClick}
+            />
           ))}
         </div>
       </SortableContext>
