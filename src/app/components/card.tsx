@@ -1,6 +1,7 @@
 import { Card } from "@/types/board";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useState } from "react";
 
 interface KanbanCardProps {
   card: Card;
@@ -10,6 +11,8 @@ interface KanbanCardProps {
 export const KanbanCard: React.FC<KanbanCardProps> = ({ card, onClick }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id });
+
+  const [isDraggingLocal, setIsDraggingLocal] = useState(false);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -21,17 +24,18 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ card, onClick }) => {
     <div
       ref={setNodeRef}
       style={style}
-      // ✅ Add listeners to entire card for dragging
       {...attributes}
       {...listeners}
       className={`p-3 mb-3 bg-white border border-gray-200 rounded-lg shadow-sm ${
         isDragging ? "shadow-lg bg-indigo-50 border-indigo-500" : "hover:shadow-md"
       } transition duration-150 cursor-grab active:cursor-grabbing`}
-      onClick={(e) => {
-        // ✅ Prevent click during drag
-        if (!isDragging) {
+      onMouseDown={() => setIsDraggingLocal(false)}
+      onMouseMove={() => setIsDraggingLocal(true)}
+      onMouseUp={() => {
+        if (!isDraggingLocal) {
           onClick?.(card.id);
         }
+        setIsDraggingLocal(false);
       }}
     >
       {/* Optional visual drag indicator */}
