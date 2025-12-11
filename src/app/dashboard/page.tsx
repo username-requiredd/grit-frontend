@@ -30,6 +30,7 @@ const supabase = createClient()
         const { data: { session } } = await supabase.auth.getSession();
 
         console.log("token",session?.access_token )
+        console.log("user",session?.user )
 
         const response = await fetch('http://localhost:3000/users',{
           headers:{
