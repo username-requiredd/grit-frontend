@@ -41,7 +41,9 @@ export type BoardState = {
   /** A normalized map of all cards, keyed by card ID. */
   cards: Record<string, Card>;
   /** Optional: Details about the board itself (title, members, etc.) */
-  boardDetails?: Board; 
+  boardDetails?: Board;
+  /** Track pending optimistic updates for rollback capability */
+  pendingOptimisticUpdates: Record<string, { originalColumnId: string; originalPosition: number }>;
 };
 
 export type MoveCardPayload = {
@@ -49,6 +51,22 @@ export type MoveCardPayload = {
   cardId: string;
   /** The ID of the column the card is moving *to*. */
   newColumnId: string;
-  /** The new vertical index/position of the card within the new column. */
-  newIndex: number; 
+  /** The new vertical position of the card within the new column. */
+  newPosition: number; 
 };
+export interface BoardInvitation {
+  id: string;
+  boardId: string;
+  invitedEmail: string;
+  role: string;
+  createdAt: string;
+  board: {
+    id: string;
+    title: string;
+  };
+  invitedBy: {
+    name: string | null;
+    email: string;
+    image: string | null;
+  };
+}

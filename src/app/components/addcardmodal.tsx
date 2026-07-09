@@ -1,69 +1,64 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Card } from "@/types/board";
-import { v4 as uuidv4 } from "uuid";
+import React, { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 interface AddCardModalProps {
   columnId: string;
   onClose: () => void;
-  onAdd: (newCard: Card) => void;
+  onAdd: (title: string, description: string, columnId: string) => Promise<void>;
 }
 
 export const AddCardModal: React.FC<AddCardModalProps> = ({ columnId, onClose, onAdd }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [animateOut, setAnimateOut] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleAdd = () => {
-    if (!title.trim()) return;
+  const handleAdd = async () => {
+    if (!title.trim() || isSubmitting) return;
 
-    const newCard: Card = {
-      id: uuidv4(),
-      title,
-      description,
-      columnId,
-      orderIndex: 0,
-      assigneeId: "",
-      dueDate: null,
-      tags: [],
-    };
-
-    onAdd(newCard);
-    closeModal();
+    setIsSubmitting(true);
+    try {
+      // Pass data to the parent so it can hit the real API
+      await onAdd(title, description, columnId);
+      closeModal();
+    } catch (error) {
+      console.error("Failed to add card", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const closeModal = () => {
     setAnimateOut(true);
-    setTimeout(onClose, 200); // Match duration of animation
+    setTimeout(onClose, 200);
   };
 
   return (
     <>
-      {/* Backdrop */}
       <div
-        onClick={closeModal}
-        className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity ${
+        onClick={!isSubmitting ? closeModal : undefined}
+        className={`fixed inset-0 bg-black/50 dark:bg-dark-bg/70 backdrop-blur-sm z-40 transition-opacity ${
           animateOut ? "opacity-0" : "opacity-100"
         }`}
       />
 
-      {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
         <div
           onClick={(e) => e.stopPropagation()}
-          className={`relative w-full max-w-md bg-white rounded-xl shadow-2xl p-6 overflow-y-auto max-h-[90vh] transition-all duration-200
+          className={`relative w-full max-w-md bg-white dark:bg-dark-surface rounded-xl shadow-2xl p-6 overflow-y-auto max-h-[90vh] transition-all duration-200
             ${animateOut ? "opacity-0 scale-95" : "opacity-100 scale-100"}`}
         >
-          {/* Close Button */}
           <button
             onClick={closeModal}
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-gray-900 font-bold text-xl z-10"
+            disabled={isSubmitting}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white dark:bg-dark-elevated hover:bg-gray-100 flex items-center justify-center text-gray-100 font-bold text-xl z-10 disabled:opacity-50"
           >
             &times;
           </button>
 
-          <h2 className="text-xl font-bold mb-4">Add New Card</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-dark-primary mb-4">Add New Card</h2>
 
           <div className="flex flex-col space-y-4">
             <input
@@ -71,29 +66,33 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ columnId, onClose, o
               placeholder="Card Title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              disabled={isSubmitting}
+              className="w-full p-2 border border-gray-300 rounded bg-white dark:bg-dark-elevated text-gray-100 focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
               autoFocus
             />
             <textarea
               placeholder="Card Description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              disabled={isSubmitting}
+              className="w-full p-2 border border-gray-300 rounded bg-white dark:bg-dark-elevated text-gray-100 focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
               rows={4}
             />
 
             <div className="flex justify-end space-x-2">
               <button
                 onClick={closeModal}
-                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-gray-600 text-gray-100 rounded hover:bg-gray-300 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAdd}
-                className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600"
+                disabled={isSubmitting || !title.trim()}
+                className="px-4 py-2 flex items-center gap-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
               >
-                Add Card
+                {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : "Add Card"}
               </button>
             </div>
           </div>

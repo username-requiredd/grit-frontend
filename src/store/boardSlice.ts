@@ -1,24 +1,27 @@
-// src/store/boardSlice.ts
-
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { BoardState, Card, MoveCardPayload } from '../types/board';
 
-// Initial state reflecting your test data structure
-// src/store/boardSlice.ts
-
+// Initial state matching BoardState type definition
 const initialState: BoardState = {
-  columns: {
-    // CRITICAL: Define all expected column IDs, even if they are empty
-    'column-TODO': [], 
-    'column-INPROGRESS': [],
-    'column-DONE': [
-      { id: 'card-ABC-1', title: 'Test Card 1', columnId: 'column-DONE', position: 1, creatorId: '167127cb-4960-4d56-ad35-6557a88fe884',description:"Test card" }
-    ],
+  columns: [
+    { id: 'column-TODO', title: 'To Do', boardId: '', cardIds: [], wipLimit: null },
+    { id: 'column-INPROGRESS', title: 'In Progress', boardId: '', cardIds: [], wipLimit: null },
+    { id: 'column-DONE', title: 'Done', boardId: '', cardIds: ['card-ABC-1'], wipLimit: null },
+  ],
+  cards: {
+    'card-ABC-1': { 
+      id: 'card-ABC-1', 
+      title: 'Test Card 1', 
+      description: 'Test card',
+      columnId: 'column-DONE', 
+      orderIndex: 0, 
+      assigneeId: null,
+      dueDate: null,
+      tags: []
+    }
   },
   pendingOptimisticUpdates: {},
 };
-
-
 
 export const boardSlice = createSlice({
   name: 'board',
@@ -26,32 +29,37 @@ export const boardSlice = createSlice({
   reducers: {
     // A. OPTIMISTIC UPDATE
     optimisticallyMoveCard: (state, action: PayloadAction<MoveCardPayload>) => {
-      const { cardId, fromColumnId, toColumnId, toPosition } = action.payload;
+      // FIX: Destructure 'newPosition' instead of 'newIndex' to match MoveCardPayload type
+      const { cardId, newColumnId, newPosition } = action.payload;
 
-      // 1. Find the card and its current index
-      const cardIndex = state.columns[fromColumnId]?.findIndex(c => c.id === cardId);
-      if (cardIndex === -1 || !state.columns[fromColumnId]) return;
+      // 1. Find the card
+      const card = state.cards[cardId];
+      if (!card) return;
       
-      const [cardToMove] = state.columns[fromColumnId].splice(cardIndex, 1);
+      const fromColumnId = card.columnId;
       
-      if (cardToMove) {
-        // 2. Save original state for rollback
-        state.pendingOptimisticUpdates[cardId] = {
-          originalColumnId: fromColumnId,
-          originalPosition: cardIndex,
+      // 2. Save original state for rollback
+      const fromColumn = state.columns.find(c => c.id === fromColumnId);
+      if (!fromColumn) return;
+      
+      const originalPosition = fromColumn.cardIds.indexOf(cardId);
+      state.pendingOptimisticUpdates[cardId] = {
+        originalColumnId: fromColumnId,
+        originalPosition,
+      };
 
+      // 3. Remove from old column
+      fromColumn.cardIds = fromColumn.cardIds.filter(id => id !== cardId);
 
-        };
-
-        // 3. Update the card data and insert into the new column
-        cardToMove.columnId = toColumnId;
-        cardToMove.position = toPosition;
-        
-        if (!state.columns[toColumnId]) {
-             state.columns[toColumnId] = [];
-        }
-        state.columns[toColumnId].splice(toPosition, 0, cardToMove);
-      }
+      // 4. Add to new column
+      const toColumn = state.columns.find(c => c.id === newColumnId);
+      if (!toColumn) return;
+      
+      // FIX: Use 'newPosition' here
+      toColumn.cardIds.splice(newPosition, 0, cardId);
+      
+      // 5. Update card's columnId
+      state.cards[cardId].columnId = newColumnId;
     },
 
     // B. REVERT UPDATE (Rollback)
@@ -59,93 +67,94 @@ export const boardSlice = createSlice({
       const { cardId } = action.payload;
       const pendingUpdate = state.pendingOptimisticUpdates[cardId];
 
-      if (pendingUpdate) {
-        const { originalColumnId, originalPosition } = pendingUpdate;
-        const currentColumnId = pendingUpdate.originalColumnId === originalColumnId ? originalColumnId : originalColumnId; // Simple way to find current column
-        
-        // Find the card in its *current* (optimistic) location
-        const cardIndex = state.columns[cardId]?.findIndex(c => c.id === cardId);
-        if (cardIndex === -1 || !state.columns[currentColumnId]) return;
+      if (!pendingUpdate) return;
+      
+      const { originalColumnId, originalPosition } = pendingUpdate;
+      const card = state.cards[cardId];
+      if (!card) return;
 
-        const [cardToMove] = state.columns[currentColumnId].splice(cardIndex, 1);
-        
-        if (cardToMove) {
-          // Move card back to its original location
-          cardToMove.columnId = originalColumnId;
-          cardToMove.position = originalPosition;
-          state.columns[originalColumnId].splice(originalPosition, 0, cardToMove);
-        }
-        delete state.pendingOptimisticUpdates[cardId];
+      // Find current column and remove card
+      const currentColumn = state.columns.find(c => c.id === card.columnId);
+      if (currentColumn) {
+        currentColumn.cardIds = currentColumn.cardIds.filter(id => id !== cardId);
+      }
+
+      // Add back to original column at original position
+      const originalColumn = state.columns.find(c => c.id === originalColumnId);
+      if (originalColumn) {
+        originalColumn.cardIds.splice(originalPosition, 0, cardId);
+        state.cards[cardId].columnId = originalColumnId;
+      }
+
+      delete state.pendingOptimisticUpdates[cardId];
+    },
+
+    addCard: (state, action: PayloadAction<{ 
+      columnId: string; 
+      cardId: string; 
+      title: string; 
+      creatorId: string;
+      description?: string;
+    }>) => {
+      const { 
+        columnId,
+        cardId,
+        title,
+        creatorId,
+        description,
+      } = action.payload;
+      
+      // Create the new card object
+      const newCard: Card = {
+        id: cardId,
+        title: title,
+        description: description || '',
+        columnId: columnId,
+        orderIndex: 0,
+        assigneeId: creatorId,
+        dueDate: null,
+        tags: []
+      };
+
+      // Add to cards record
+      state.cards[cardId] = newCard;
+
+      // Add to the column's cardIds array at the beginning
+      const column = state.columns.find(c => c.id === columnId);
+      if (column) {
+        column.cardIds.unshift(cardId);
       }
     },
 
-addCard: (state, action: PayloadAction<{ 
-  columnId: string; 
-  cardId: string; 
-  title: string; 
-  creatorId: string;
-  description?: string; // ✅ Add this to the payload type
-}>) => {
-  const { 
-    columnId,
-    cardId,
-    title,
-    creatorId,
-    description, // ✅ Now this exists in the payload
-  } = action.payload;
-  
-  // Create the new card object
-  const newCard: Card = {
-    id: cardId,
-    title: title,
-    description: description || '', // Now this works
-    columnId: columnId,
-    position: state.columns[columnId] ? state.columns[columnId].length : 0,
-    creatorId: creatorId,
-  };
-
-  // Add it to the top of the column array
-  if (state.columns[columnId]) {
-    state.columns[columnId].unshift(newCard); // Add to the start
-  } else {
-    state.columns[columnId] = [newCard];
-  }
-},
-
     // C. CONFIRMATION/REMOTE UPDATE
     confirmCardMove: (state, action: PayloadAction<Card & { movedByUserId: string }>) => {
-      const { id: cardId, movedByUserId } = action.payload;
+      const { id: cardId, columnId: newColumnId, orderIndex: newIndex, movedByUserId } = action.payload;
 
       if (state.pendingOptimisticUpdates[cardId]) {
         // This is the initiating client's confirmation. Just clear pending state.
         delete state.pendingOptimisticUpdates[cardId];
       } else {
         // This is a remote update. Apply the change forcefully.
-        const { columnId: newColumnId, position: newPosition } = action.payload;
-        
-        // 1. Find and remove card from its current location
-        let found = false;
-        for (const colId in state.columns) {
-            const cardIndex = state.columns[colId].findIndex(c => c.id === cardId);
-            if (cardIndex > -1) {
-                const [card] = state.columns[colId].splice(cardIndex, 1);
-                // 2. Insert into the new location
-                if (card) {
-                    card.columnId = newColumnId;
-                    card.position = newPosition;
-                    state.columns[newColumnId].splice(newPosition, 0, card);
-                }
-                found = true;
-                break;
-            }
+        const card = state.cards[cardId];
+        if (!card) return;
+
+        // 1. Remove from current column
+        const currentColumn = state.columns.find(c => c.id === card.columnId);
+        if (currentColumn) {
+          currentColumn.cardIds = currentColumn.cardIds.filter(id => id !== cardId);
         }
-        // If not found, it's a new card creation (not implemented here)
+
+        // 2. Add to new column
+        const newColumn = state.columns.find(c => c.id === newColumnId);
+        if (newColumn) {
+          newColumn.cardIds.splice(newIndex, 0, cardId);
+          state.cards[cardId].columnId = newColumnId;
+          state.cards[cardId].orderIndex = newIndex;
+        }
       }
     },
   },
 });
 
-
-
-export const { optimisticallyMoveCard, revertCardMove, confirmCardMove,addCard } = boardSlice.actions;
+export const { optimisticallyMoveCard, revertCardMove, confirmCardMove, addCard } = boardSlice.actions;
 export default boardSlice.reducer;
